@@ -8,7 +8,7 @@ const NO_LOAD = Error('ffmpeg.wasm is not ready, make sure you have completed lo
 module.exports = (_options = {}) => {
   const {
     log: optLog,
-    logger,
+    logger: optLogger,
     progress: optProgress,
     ...options
   } = {
@@ -21,10 +21,12 @@ module.exports = (_options = {}) => {
   let runResolve = null;
   let runReject = null;
   let running = false;
-  let customLogger = () => {};
+  let customLogger = optLogger;
   let logging = optLog;
   let progress = optProgress;
   let duration = 0;
+  let frames = 0;
+  let readFrames = false;
   let ratio = 0;
 
   const detectCompletion = (message) => {
@@ -51,13 +53,29 @@ module.exports = (_options = {}) => {
         const ts = message.split(', ')[0].split(': ')[1];
         const d = ts2sec(ts);
         prog({ duration: d, ratio });
-        if (duration === 0 || duration > d) {
+        if ((duration === 0 || duration > d) && d >= 1) {
           duration = d;
+          readFrames = true;
         }
+      } else if (readFrames && message.startsWith('    Stream')) {
+        const match = message.match(/([\d.]+) fps/);
+        if (match) {
+          const fps = parseFloat(match[1]);
+          frames = duration * fps;
+        } else {
+          frames = 0;
+        }
+        readFrames = false;
       } else if (message.startsWith('frame') || message.startsWith('size')) {
         const ts = message.split('time=')[1].split(' ')[0];
         const t = ts2sec(ts);
-        ratio = t / duration;
+        const match = message.match(/frame=\s*(\d+)/);
+        if (frames && match) {
+          const f = parseFloat(match[1]);
+          ratio = Math.min(f / frames, 1);
+        } else {
+          ratio = t / duration;
+        }
         prog({ ratio, time: t });
       } else if (message.startsWith('video:')) {
         prog({ ratio: 1 });
@@ -76,7 +94,7 @@ module.exports = (_options = {}) => {
    * In browser environment, the ffmpeg.wasm-core script is fetch from
    * CDN and can be assign to a local path by assigning `corePath`.
    * In node environment, we use dynamic require and the default `corePath`
-   * is `$ffmpeg/core`.
+   * is `@ffmpeg/core`.
    *
    * Typically the load() func might take few seconds to minutes to complete,
    * better to do it as early as possible.
@@ -97,6 +115,10 @@ module.exports = (_options = {}) => {
         wasmPath,
       } = await getCreateFFmpegCore(options);
       Core = await createFFmpegCore({
+        /*
+         * Avoid automatic exit after main is run
+         */
+        noExitRuntime: true,
         /*
          * Assign mainScriptUrlOrBlob fixes chrome extension web worker issue
          * as there is no document.currentScript in the context of content_scripts
@@ -123,7 +145,7 @@ module.exports = (_options = {}) => {
           return prefix + path;
         },
       });
-      ffmpeg = Core.cwrap(options.mainName || 'proxy_main', 'number', ['number', 'number']);
+      ffmpeg = Core.cwrap(options.mainName || '_emscripten_proxy_main', 'number', ['number', 'number']);
       log('info', 'ffmpeg-core loaded');
     } else {
       throw Error('ffmpeg.wasm was loaded, you should not load it again, use ffmpeg.isLoaded() to check next time.');
@@ -219,7 +241,7 @@ module.exports = (_options = {}) => {
       }
       running = false;
       try {
-        Core.exit(1);
+        Core.exit(0);
       } catch (err) {
         log(err.message);
         if (runReject) {

@@ -6,6 +6,7 @@
 
 # ffmpeg.wasm
 
+[![stability-experimental](https://img.shields.io/badge/stability-experimental-orange.svg)](https://github.com/emersion/stability-badges#experimental)
 [![Node Version](https://img.shields.io/node/v/@ffmpeg/ffmpeg.svg)](https://img.shields.io/node/v/@ffmpeg/ffmpeg.svg)
 [![Actions Status](https://github.com/ffmpegwasm/ffmpeg.wasm/workflows/CI/badge.svg)](https://github.com/ffmpegwasm/ffmpeg.wasm/actions)
 ![CodeQL](https://github.com/ffmpegwasm/ffmpeg.wasm/workflows/CodeQL/badge.svg)
@@ -15,6 +16,10 @@
 [![Code Style](https://badgen.net/badge/code%20style/airbnb/ff5a5f?icon=airbnb)](https://github.com/airbnb/javascript)
 [![Downloads Total](https://img.shields.io/npm/dt/@ffmpeg/ffmpeg.svg)](https://www.npmjs.com/package/@ffmpeg/ffmpeg)
 [![Downloads Month](https://img.shields.io/npm/dm/@ffmpeg/ffmpeg.svg)](https://www.npmjs.com/package/@ffmpeg/ffmpeg)
+
+Join us on Discord!
+
+[![Discord](https://dcbadge.vercel.app/api/server/NjGMaqqfm5)](https://discord.gg/NjGMaqqfm5)
 
 ffmpeg.wasm is a pure Webassembly / Javascript port of FFmpeg. It enables video & audio record, convert and stream right inside browsers.
 
@@ -27,6 +32,7 @@ ffmpeg.wasm is a pure Webassembly / Javascript port of FFmpeg. It enables video 
 
 Try it: [https://ffmpegwasm.netlify.app](https://ffmpegwasm.netlify.app#demo)
 
+Check next steps of ffmpeg.wasm [HERE](https://github.com/ffmpegwasm/ffmpeg.wasm/discussions/415)
 
 ## Installation
 
@@ -63,8 +69,8 @@ Or, using a script tag in the browser (only works in some browsers, see list bel
 ffmpeg.wasm provides simple to use APIs, to transcode a video you only need few lines of code:
 
 ```javascript
-const fs = require('fs');
-const { createFFmpeg, fetchFile } = require('@ffmpeg/ffmpeg');
+import { writeFile } from 'fs/promises';
+import { createFFmpeg, fetchFile } from '@ffmpeg/ffmpeg';
 
 const ffmpeg = createFFmpeg({ log: true });
 
@@ -105,7 +111,24 @@ const ffmpeg = createFFmpeg({
 });
 ```
 
+Keep in mind that for compatibility with webworkers and nodejs this will default to a local path, so it will attempt to look for `'static/js/ffmpeg.core.js'` locally, often resulting in a local resource error. If you wish to use a core version hosted on your own domain, you might reference it relatively like this:
+
+```javascript
+const ffmpeg = createFFmpeg({
+  corePath: new URL('static/js/ffmpeg-core.js', document.location).href,
+});
+```
+
 For the list available versions and their changelog, please check: https://github.com/ffmpegwasm/ffmpeg.wasm-core/releases
+
+### Use single thread version
+
+```javascript
+const ffmpeg = createFFmpeg({
+  mainName: 'main',
+  corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js',
+});
+```
 
 ## Multi-threading
 

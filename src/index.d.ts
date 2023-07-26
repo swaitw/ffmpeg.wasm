@@ -4,7 +4,6 @@ export const FS: {
     readdir: (pathName: string) => string[],
     unlink: (fileName: string) => void,
     mkdir: (fileName: string) => void,
-    readdir: (fileName: string) => string[],
 }
 
 type FSMethodNames = { [K in keyof typeof FS]: (typeof FS)[K] extends (...args: any[]) => any ? K : never }[keyof typeof FS];
@@ -27,6 +26,8 @@ export interface CreateFFmpegOptions {
     logger?: LogCallback;
     /** a function to trace the progress, a quick example is p => console.log(p) */
     progress?: ProgressCallback;
+    /** name of the main function of the ffmpeg-core.js script */
+    mainName?: string;
 }
 
 export interface FFmpeg {
